@@ -1,6 +1,12 @@
 import { useSceneStore } from '@/store/index'
+import { IconButton } from '@/components/ui/index'
 
-export function TransportBar() {
+interface TransportBarProps {
+  onFullscreen: () => void
+  isFullscreen: boolean
+}
+
+export function TransportBar({ onFullscreen, isFullscreen }: TransportBarProps) {
   const scene = useSceneStore((s) => s.activeScene())
   const playing = useSceneStore((s) => s.playing)
   const togglePlayback = useSceneStore((s) => s.togglePlayback)
@@ -22,6 +28,9 @@ export function TransportBar() {
           {scene.tags.length > 0 && ` · ${scene.tags.join(', ')}`}
         </p>
       </div>
+      <IconButton onClick={onFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+        {isFullscreen ? '⛶' : '⛶'}
+      </IconButton>
     </div>
   )
 }

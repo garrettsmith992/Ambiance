@@ -173,33 +173,59 @@ Ambiance's specific combination — local or streaming video + local or streamin
 
 ## Phased Build Plan
 
-**Phase 1 — Core shell**
-Vite + React + TypeScript + Tailwind scaffold. Dark, cinematic UI. Three-panel layout.
+- [x] **Phase 1 — Core shell**
+  Vite + React + TypeScript + Tailwind scaffold. Dark cinematic UI shell. Three-panel layout (Video, Music, SFX). Scene sidebar with create/select/delete. Transport bar. Reusable UI primitives (Panel, Slider, IconButton).
+  - Core types defined in `src/types/scene.ts` — mirrors `.amb` scene.json schema
+  - Zustand store in `src/store/scene-store.ts` — shaped around `Scene` type, auto-persists to localStorage
+  - `tags: string[]` on all entities, `containsMusic: boolean` on VideoLayer — baked into schema from day one
+  - Path alias `@/` configured for clean imports
 
-**Phase 2 — Video layer**
-Local folder picker via File System Access API. Shuffle/loop playback. YouTube IFrame integration. Volume + mute. Crossfade between clips.
+- [ ] **Phase 2 — Video layer**
+  Local folder picker via File System Access API. Shuffle/loop playback. YouTube IFrame integration. Volume + mute. Crossfade between clips.
 
-**Phase 3 — Music layer**
-Local audio folder playback. Spotify SDK integration. YouTube playlist as audio source. Independent volume.
+- [ ] **Phase 3 — Music layer**
+  Local audio folder playback. Spotify SDK integration. YouTube playlist as audio source. Independent volume. Auto-duck or skip when video `containsMusic` is true.
 
-**Phase 4 — SFX layer**
-Multiple addable/removable SFX slots. Loop mode. Interval mode with min/max sliders. Per-slot volume and mute. Up to 8 simultaneous slots.
+- [ ] **Phase 4 — SFX layer**
+  Multiple addable/removable SFX slots. Loop mode. Interval mode with min/max sliders. Per-slot volume and mute. Up to 8 simultaneous slots. `setTimeout` with randomized ranges, self-rescheduling.
 
-**Phase 5 — Scene management**
-Zustand store wiring all layer state together. Save/load named scenes to localStorage. Scene browser UI.
+- [ ] **Phase 5 — Scene management**
+  Scene browser UI polish. Rename, duplicate, reorder. Preview thumbnails.
+  *(Note: Zustand store + localStorage persistence already done in Phase 1.)*
 
-**Phase 6 — .amb format**
-Export scene as `.amb` zip (scene.json + bundled SFX + preview image). Import `.amb` file drag-and-drop. Local path warning on export.
+- [ ] **Phase 6 — .amb format**
+  Export scene as `.amb` zip (scene.json + bundled SFX + preview image). Import `.amb` file drag-and-drop. Local path warning on export. Uses JSZip (already installed).
 
-**Phase 7 (potential) — Tags & Vibe Mode**
-All media entities (video, music, SFX) carry an optional `tags: string[]` field in the data model from day one — defaulting to an empty array with no UI cost. If usage patterns justify it, a future "Vibe Mode" lets users select a tag (e.g., "relaxing," "adventure," "cozy") and the app dynamically assembles a scene by pulling tagged video, music, and SFX from across their entire library. This turns Ambiance from a scene-picker into a mood-driven jukebox when you don't want to think about what to play. The tagging UI and vibe-shuffle logic are deferred until real usage validates the need — but the schema supports it from the start so no migration is required.
+- [ ] **Phase 7 (potential) — Tags & Vibe Mode**
+  Tagging UI + "Vibe Mode" that dynamically assembles a scene from tagged media across the whole library. Schema already supports it — deferred until real usage validates the need.
 
 ---
 
-## Name
+## Project Structure
 
-**Ambiance** — working title, fits. Could also consider something more evocative like *Aether*, *Immerse*, *Layered*, or *Veil* if you want something more brandable down the road. The `.amb` extension works regardless of final name.
+```
+src/
+├── types/          ← scene.json schema (Scene, VideoLayer, MusicLayer, SfxSlot, AmbManifest)
+├── store/          ← Zustand store (scene CRUD, layer controls, tags)
+├── lib/            ← defaults, localStorage persistence
+├── components/
+│   ├── ui/         ← Panel, Slider, IconButton
+│   ├── video/      ← VideoPanel
+│   ├── music/      ← MusicPanel
+│   ├── sfx/        ← SfxPanel
+│   └── scene/      ← SceneSidebar, TransportBar
+└── hooks/          ← (ready for audio/video engine hooks)
+```
 
 ---
 
-*Document generated March 2026. Stack, format spec, and feature set agreed upon before any code written — intentional so the .amb format shapes state architecture from day one.*
+## Resuming Work
+
+If starting a new chat, the key files to read first:
+1. This file (`CONCEPT.md`) — vision + progress
+2. `src/types/scene.ts` — the data model everything is built around
+3. `src/store/scene-store.ts` — all app state and actions
+
+---
+
+*Last updated March 26, 2026 — Phase 1 complete, Phase 2 next.*
