@@ -7,21 +7,56 @@ import { MusicPanel } from '@/components/music/MusicPanel'
 import { SfxPanel } from '@/components/sfx/SfxPanel'
 import { VideoPlayer } from '@/components/video/VideoPlayer'
 import { YouTubeVideoPlayer } from '@/components/video/YouTubePlayer'
+import { YouTubeMusicPlayer } from '@/components/music/YouTubeMusicPlayer'
 import { useLocalVideo } from '@/hooks/use-local-video'
+import { useLocalAudio } from '@/hooks/use-local-audio'
+import { useSpotify } from '@/hooks/use-spotify'
+
+const SPOTIFY_CLIENT_ID = localStorage.getItem('ambiance-spotify-client-id') ?? ''
 
 function App() {
   const scene = useSceneStore((s) => s.activeScene())
+  const playing = useSceneStore((s) => s.playing)
   const appRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [uiVisible, setUiVisible] = useState(true)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const videoSource = scene?.video.source ?? null
+  const musicSource = scene?.music.source ?? null
 
-  // Local video management (lifted here so VideoPlayer and VideoPanel share state)
+  // Local video
   const localVideo = useLocalVideo(
     videoSource?.source === 'local' ? videoSource.shuffle : false
   )
+
+  // Local audio
+  const localAudio = useLocalAudio(
+    musicSource?.source === 'local' ? musicSource.shuffle : false,
+    scene?.music.volume ?? 0.5,
+    scene?.music.muted ?? false,
+  )
+
+  // Spotify
+  const spotify = useSpotify({
+    clientId: SPOTIFY_CLIENT_ID,
+    volume: scene?.music.volume ?? 0.5,
+    muted: scene?.music.muted ?? false,
+  })
+
+  // Sync local audio play/pause with global transport
+  useEffect(() => {
+    if (musicSource?.source !== 'local') return
+    if (playing) localAudio.play()
+    else localAudio.pause()
+  }, [playing, musicSource?.source])
+
+  // Sync spotify play/pause with global transport
+  useEffect(() => {
+    if (musicSource?.source !== 'spotify') return
+    if (playing) spotify.play()
+    else spotify.pause()
+  }, [playing, musicSource?.source])
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -40,19 +75,17 @@ function App() {
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
 
-  // Auto-hide UI in fullscreen after inactivity
+  // Auto-hide UI in fullscreen
   useEffect(() => {
     if (!isFullscreen) {
       setUiVisible(true)
       return
     }
-
     const showUi = () => {
       setUiVisible(true)
       clearTimeout(hideTimerRef.current)
       hideTimerRef.current = setTimeout(() => setUiVisible(false), 3000)
     }
-
     showUi()
     window.addEventListener('mousemove', showUi)
     return () => {
@@ -79,23 +112,26 @@ function App() {
         </>
       )}
 
-      {/* UI layer — overlays on top of video */}
+      {/* Hidden YouTube music player */}
+      {scene && musicSource?.source === 'youtube' && (
+        <YouTubeMusicPlayer source={musicSource} />
+      )}
+
+      {/* UI layer */}
       <div
         className={`relative z-10 flex w-full h-full transition-opacity duration-500 ${
           isFullscreen && !uiVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
-        {/* Sidebar */}
         <SceneSidebar />
 
-        {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           {scene ? (
             <>
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="max-w-2xl mx-auto space-y-4">
                   <VideoPanel localVideo={localVideo} />
-                  <MusicPanel />
+                  <MusicPanel localAudio={localAudio} spotify={spotify} />
                   <SfxPanel />
                 </div>
               </div>
