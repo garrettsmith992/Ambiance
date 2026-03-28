@@ -196,8 +196,11 @@ Ambiance's specific combination — local or streaming video + local or streamin
   - Spotify client ID stored in localStorage (`ambiance-spotify-client-id`)
   - TODO: Auto-duck music when video `containsMusic` is true (deferred to polish)
 
-- [ ] **Phase 4 — SFX layer**
+- [x] **Phase 4 — SFX layer**
   Multiple addable/removable SFX slots. Loop mode. Interval mode with min/max sliders. Per-slot volume and mute. Up to 8 simultaneous slots. `setTimeout` with randomized ranges, self-rescheduling.
+  - `src/hooks/use-sfx.ts` — file picker (`showOpenFilePicker`), per-slot HTMLAudioElement pool, loop via native `loop`, interval via self-rescheduling `setTimeout` with randomized delays
+  - `src/components/sfx/SfxPanel.tsx` — full UI: add slot (file picker), mode toggle (loop/interval), volume slider, interval min/max range sliders (5s–10min), mute, remove
+  - Global transport sync: SFX slots start/stop with play/pause, interval scheduling clears on pause
 
 - [ ] **Phase 5 — Scene management**
   Scene browser UI polish. Rename, duplicate, reorder. Preview thumbnails.
@@ -218,12 +221,12 @@ src/
 ├── types/          ← scene.json schema + global.d.ts (File System Access, YT IFrame API)
 ├── store/          ← Zustand store (scene CRUD, layer controls, tags)
 ├── lib/            ← defaults, localStorage persistence
-├── hooks/          ← use-local-video, use-local-audio, use-youtube-player, use-spotify
+├── hooks/          ← use-local-video, use-local-audio, use-youtube-player, use-spotify, use-sfx
 ├── components/
 │   ├── ui/         ← Panel, Slider, IconButton
 │   ├── video/      ← VideoPanel, VideoPlayer, YouTubePlayer
 │   ├── music/      ← MusicPanel, YouTubeMusicPlayer
-│   ├── sfx/        ← SfxPanel
+│   ├── sfx/        ← SfxPanel (add/remove slots, mode toggle, interval sliders)
 │   └── scene/      ← SceneSidebar, TransportBar
 ```
 
@@ -238,4 +241,4 @@ If starting a new chat, the key files to read first:
 
 ---
 
-*Last updated March 28, 2026 — Phases 1–3 complete, Phase 4 (SFX layer) next.*
+*Last updated March 28, 2026 — Phases 1–4 complete, Phase 5 (scene management polish) next.*

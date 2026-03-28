@@ -11,6 +11,7 @@ import { YouTubeMusicPlayer } from '@/components/music/YouTubeMusicPlayer'
 import { useLocalVideo } from '@/hooks/use-local-video'
 import { useLocalAudio } from '@/hooks/use-local-audio'
 import { useSpotify } from '@/hooks/use-spotify'
+import { useSfx } from '@/hooks/use-sfx'
 
 const SPOTIFY_CLIENT_ID = localStorage.getItem('ambiance-spotify-client-id') ?? ''
 
@@ -57,6 +58,9 @@ function App() {
     if (playing) spotify.play()
     else spotify.pause()
   }, [playing, musicSource?.source])
+
+  // SFX layer
+  const sfx = useSfx(scene?.sfx.slots ?? [], playing)
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -132,7 +136,7 @@ function App() {
                 <div className="max-w-2xl mx-auto space-y-4">
                   <VideoPanel localVideo={localVideo} />
                   <MusicPanel localAudio={localAudio} spotify={spotify} />
-                  <SfxPanel />
+                  <SfxPanel sfx={sfx} />
                 </div>
               </div>
               <TransportBar onFullscreen={toggleFullscreen} isFullscreen={isFullscreen} />

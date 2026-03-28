@@ -11,8 +11,17 @@ interface FileSystemDirectoryHandle {
   values(): AsyncIterableIterator<FileSystemFileHandle | FileSystemDirectoryHandle>
 }
 
+interface OpenFilePickerOptions {
+  multiple?: boolean
+  types?: Array<{
+    description?: string
+    accept: Record<string, string[]>
+  }>
+}
+
 interface Window {
   showDirectoryPicker(): Promise<FileSystemDirectoryHandle>
+  showOpenFilePicker(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>
 }
 
 // YouTube IFrame API
