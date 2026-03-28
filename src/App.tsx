@@ -1,5 +1,6 @@
 import { useRef, useCallback, useState, useEffect } from 'react'
 import { useSceneStore } from '@/store/index'
+import type { Scene } from '@/types/index'
 import { SceneSidebar } from '@/components/scene/SceneSidebar'
 import { TransportBar } from '@/components/scene/TransportBar'
 import { VideoPanel } from '@/components/video/VideoPanel'
@@ -12,6 +13,7 @@ import { useLocalVideo } from '@/hooks/use-local-video'
 import { useLocalAudio } from '@/hooks/use-local-audio'
 import { useSpotify } from '@/hooks/use-spotify'
 import { useSfx } from '@/hooks/use-sfx'
+import { exportAmb, importAmb, downloadBlob, getLocalSourceWarnings } from '@/lib/amb-format'
 
 const SPOTIFY_CLIENT_ID = localStorage.getItem('ambiance-spotify-client-id') ?? ''
 
@@ -61,6 +63,40 @@ function App() {
 
   // SFX layer
   const sfx = useSfx(scene?.sfx.slots ?? [], playing)
+
+  // .amb export
+  const importScene = useSceneStore((s) => s.importScene)
+
+  const handleExport = useCallback(async (sceneToExport: Scene) => {
+    const warnings = getLocalSourceWarnings(sceneToExport)
+    if (warnings.length > 0) {
+      const proceed = window.confirm(
+        `Warning:\n\n${warnings.join('\n')}\n\nThese local sources won't be accessible on another machine. Export anyway?`
+      )
+      if (!proceed) return
+    }
+    const blob = await exportAmb(sceneToExport, sfx.getFileHandle)
+    const safeName = sceneToExport.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    downloadBlob(blob, `${safeName}.amb`)
+  }, [sfx.getFileHandle])
+
+  // .amb import
+  const handleImport = useCallback(async (file: File) => {
+    try {
+      const { scene: imported, sfxBlobs } = await importAmb(file)
+      importScene(imported)
+      // Load SFX blobs into audio elements after store has the new scene
+      const updated = useSceneStore.getState().activeScene()
+      if (updated) {
+        for (const slot of updated.sfx.slots) {
+          const entry = sfxBlobs.get(slot.id)
+          if (entry) sfx.loadSlotBlob(slot.id, entry.blob)
+        }
+      }
+    } catch {
+      window.alert('Failed to import .amb file. The file may be corrupt or invalid.')
+    }
+  }, [importScene, sfx])
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -127,7 +163,7 @@ function App() {
           isFullscreen && !uiVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
-        <SceneSidebar />
+        <SceneSidebar onExport={handleExport} onImport={handleImport} />
 
         <div className="flex-1 flex flex-col min-w-0">
           {scene ? (

@@ -161,5 +161,20 @@ export function useSfx(slots: SfxSlot[], playing: boolean) {
     }
   }, [])
 
-  return { pickFile, loadSlotFile }
+  /** Load a raw Blob into a slot's audio element (used by .amb import) */
+  const loadSlotBlob = useCallback((slotId: string, blob: Blob) => {
+    const rt = getRuntime(slotId)
+    if (rt.blobUrl) URL.revokeObjectURL(rt.blobUrl)
+    const url = URL.createObjectURL(blob)
+    rt.blobUrl = url
+    rt.fileHandle = null
+    rt.audio.src = url
+  }, [getRuntime])
+
+  /** Get the FileSystemFileHandle for a loaded slot (needed for .amb export) */
+  const getFileHandle = useCallback((slotId: string): FileSystemFileHandle | null => {
+    return runtimeRef.current.get(slotId)?.fileHandle ?? null
+  }, [])
+
+  return { pickFile, loadSlotFile, loadSlotBlob, getFileHandle }
 }

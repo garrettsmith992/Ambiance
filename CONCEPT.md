@@ -208,8 +208,12 @@ Ambiance's specific combination — local or streaming video + local or streamin
   - `src/store/scene-store.ts` — added `reorderScene` (swap up/down) and `setPreviewImage` actions
   - `src/components/scene/SceneSidebar.tsx` — inline rename (click-to-edit), context menu (···) with rename/duplicate/move up/move down/delete, preview thumbnail display
 
-- [ ] **Phase 6 — .amb format**
+- [x] **Phase 6 — .amb format**
   Export scene as `.amb` zip (scene.json + bundled SFX + preview image). Import `.amb` file drag-and-drop. Local path warning on export. Uses JSZip (already installed).
+  - `src/lib/amb-format.ts` — `exportAmb` (builds zip with scene.json + sfx/ + preview), `importAmb` (parses zip, reconstructs Scene + extracts SFX blobs), `getLocalSourceWarnings`, `downloadBlob`
+  - `src/hooks/use-sfx.ts` — added `getFileHandle` (for export) and `loadSlotBlob` (for import)
+  - `src/components/scene/SceneSidebar.tsx` — "Export .amb" in context menu, "Import" button, drag-and-drop .amb onto sidebar
+  - Local source warning dialog shown before export if video/music uses local folders
 
 - [ ] **Phase 7 (potential) — Tags & Vibe Mode**
   Tagging UI + "Vibe Mode" that dynamically assembles a scene from tagged media across the whole library. Schema already supports it — deferred until real usage validates the need.
@@ -243,4 +247,4 @@ If starting a new chat, the key files to read first:
 
 ---
 
-*Last updated March 28, 2026 — Phases 1–5 complete, Phase 6 (.amb format) next.*
+*Last updated March 28, 2026 — Phases 1–6 complete, Phase 7 (tags & vibe mode) is potential future work.*

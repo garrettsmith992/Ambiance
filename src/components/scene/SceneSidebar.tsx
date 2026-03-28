@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSceneStore } from '@/store/index'
 import type { Scene } from '@/types/index'
 
@@ -38,7 +38,15 @@ function RenameInput({
 
 // ─── Per-scene row ─────────────────────────────────────────────
 
-function SceneRow({ scene, isActive }: { scene: Scene; isActive: boolean }) {
+function SceneRow({
+  scene,
+  isActive,
+  onExport,
+}: {
+  scene: Scene
+  isActive: boolean
+  onExport: (scene: Scene) => void
+}) {
   const setActive = useSceneStore((s) => s.setActiveScene)
   const deleteScene = useSceneStore((s) => s.deleteScene)
   const renameScene = useSceneStore((s) => s.renameScene)
@@ -150,6 +158,14 @@ function SceneRow({ scene, isActive }: { scene: Scene; isActive: boolean }) {
           >
             Move down
           </MenuButton>
+          <MenuButton
+            onClick={() => {
+              onExport(scene)
+              setMenuOpen(false)
+            }}
+          >
+            Export .amb
+          </MenuButton>
           <div className="border-t border-border my-1" />
           <MenuButton
             onClick={() => {
@@ -194,29 +210,85 @@ function MenuButton({
 
 // ─── Sidebar ───────────────────────────────────────────────────
 
-export function SceneSidebar() {
+interface SceneSidebarProps {
+  onExport: (scene: Scene) => void
+  onImport: (file: File) => void
+}
+
+export function SceneSidebar({ onExport, onImport }: SceneSidebarProps) {
   const scenes = useSceneStore((s) => s.scenes)
   const activeSceneId = useSceneStore((s) => s.activeSceneId)
   const createScene = useSceneStore((s) => s.createScene)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setDragOver(false)
+      const file = e.dataTransfer.files[0]
+      if (file && file.name.endsWith('.amb')) onImport(file)
+    },
+    [onImport],
+  )
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (file) onImport(file)
+      e.target.value = '' // reset so the same file can be re-imported
+    },
+    [onImport],
+  )
 
   return (
-    <div className="w-56 shrink-0 bg-surface-raised border-r border-border flex flex-col h-full">
+    <div
+      className={`w-56 shrink-0 bg-surface-raised border-r flex flex-col h-full transition-colors ${
+        dragOver ? 'border-accent bg-accent/5' : 'border-border'
+      }`}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h1 className="text-sm font-semibold tracking-widest uppercase text-text-secondary">
           Ambiance
         </h1>
-        <button
-          onClick={() => createScene()}
-          className="text-xs px-2 py-1 bg-surface-overlay border border-border rounded hover:border-accent transition-colors"
-        >
-          + New
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-xs px-2 py-1 bg-surface-overlay border border-border rounded hover:border-accent transition-colors"
+            title="Import .amb file"
+          >
+            Import
+          </button>
+          <button
+            onClick={() => createScene()}
+            className="text-xs px-2 py-1 bg-surface-overlay border border-border rounded hover:border-accent transition-colors"
+          >
+            + New
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".amb"
+          onChange={handleFileInput}
+          className="hidden"
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
-        {scenes.length === 0 ? (
+        {dragOver ? (
+          <p className="text-accent text-xs text-center px-4 py-8">
+            Drop .amb file to import
+          </p>
+        ) : scenes.length === 0 ? (
           <p className="text-text-secondary text-xs text-center px-4 py-8">
-            No scenes yet. Create one to get started.
+            No scenes yet. Create one or drop a .amb file.
           </p>
         ) : (
           scenes.map((scene) => (
@@ -224,6 +296,7 @@ export function SceneSidebar() {
               key={scene.id}
               scene={scene}
               isActive={scene.id === activeSceneId}
+              onExport={onExport}
             />
           ))
         )}
