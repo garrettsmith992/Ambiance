@@ -6,18 +6,14 @@
 
 // ─── Video Layer ───────────────────────────────────────────────
 
-export type VideoSourceType = 'local' | 'youtube'
-
 export interface VideoSourceLocal {
-  source: 'local'
+  type: 'local'
   /** Display name or folder path — resolved at runtime via File System Access API */
   folderName: string
-  shuffle: boolean
-  loop: boolean
 }
 
 export interface VideoSourceYouTube {
-  source: 'youtube'
+  type: 'youtube'
   /** YouTube playlist ID or single video ID */
   videoId?: string
   playlistId?: string
@@ -26,7 +22,8 @@ export interface VideoSourceYouTube {
 export type VideoSource = VideoSourceLocal | VideoSourceYouTube
 
 export interface VideoLayer {
-  source: VideoSource | null
+  sources: VideoSource[]
+  shuffle: boolean
   volume: number
   muted: boolean
   /** Whether the video source contains its own music/soundtrack */
@@ -36,22 +33,18 @@ export interface VideoLayer {
 
 // ─── Music Layer ───────────────────────────────────────────────
 
-export type MusicSourceType = 'local' | 'spotify' | 'youtube'
-
 export interface MusicSourceLocal {
-  source: 'local'
+  type: 'local'
   folderName: string
-  shuffle: boolean
-  loop: boolean
 }
 
 export interface MusicSourceSpotify {
-  source: 'spotify'
+  type: 'spotify'
   uri: string
 }
 
 export interface MusicSourceYouTube {
-  source: 'youtube'
+  type: 'youtube'
   playlistId?: string
   videoId?: string
 }
@@ -59,7 +52,8 @@ export interface MusicSourceYouTube {
 export type MusicSource = MusicSourceLocal | MusicSourceSpotify | MusicSourceYouTube
 
 export interface MusicLayer {
-  source: MusicSource | null
+  sources: MusicSource[]
+  shuffle: boolean
   volume: number
   muted: boolean
   tags: string[]
@@ -110,14 +104,16 @@ export interface AmbManifest {
   version: string
   created: string
   video: {
-    source: VideoSource | null
+    sources: VideoSource[]
+    shuffle: boolean
     volume: number
     muted: boolean
     containsMusic: boolean
     tags: string[]
   }
   music: {
-    source: MusicSource | null
+    sources: MusicSource[]
+    shuffle: boolean
     volume: number
     muted: boolean
     tags: string[]

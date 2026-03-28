@@ -2,7 +2,8 @@ import type { Scene, VideoLayer, MusicLayer, SfxLayer } from '@/types/index'
 
 export function createDefaultVideoLayer(): VideoLayer {
   return {
-    source: null,
+    sources: [],
+    shuffle: true,
     volume: 0.5,
     muted: false,
     containsMusic: false,
@@ -12,7 +13,8 @@ export function createDefaultVideoLayer(): VideoLayer {
 
 export function createDefaultMusicLayer(): MusicLayer {
   return {
-    source: null,
+    sources: [],
+    shuffle: true,
     volume: 0.5,
     muted: false,
     tags: [],

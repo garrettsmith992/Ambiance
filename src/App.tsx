@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState, useEffect } from 'react'
 import { useSceneStore } from '@/store/index'
-import type { Scene } from '@/types/index'
+import type { Scene, VideoSourceYouTube, MusicSourceYouTube } from '@/types/index'
 import { SceneSidebar } from '@/components/scene/SceneSidebar'
 import { TransportBar } from '@/components/scene/TransportBar'
 import { VideoPanel } from '@/components/video/VideoPanel'
@@ -25,17 +25,18 @@ function App() {
   const [uiVisible, setUiVisible] = useState(true)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const videoSource = scene?.video.source ?? null
-  const musicSource = scene?.music.source ?? null
+  // Derive active sources from the playlist arrays
+  const hasLocalVideo = scene?.video.sources.some((s) => s.type === 'local') ?? false
+  const hasLocalMusic = scene?.music.sources.some((s) => s.type === 'local') ?? false
+  const firstYouTubeVideo = scene?.video.sources.find((s) => s.type === 'youtube') as VideoSourceYouTube | undefined
+  const firstYouTubeMusic = scene?.music.sources.find((s) => s.type === 'youtube') as MusicSourceYouTube | undefined
 
   // Local video
-  const localVideo = useLocalVideo(
-    videoSource?.source === 'local' ? videoSource.shuffle : false
-  )
+  const localVideo = useLocalVideo(scene?.video.shuffle ?? true)
 
   // Local audio
   const localAudio = useLocalAudio(
-    musicSource?.source === 'local' ? musicSource.shuffle : false,
+    scene?.music.shuffle ?? true,
     scene?.music.volume ?? 0.5,
     scene?.music.muted ?? false,
   )
@@ -49,17 +50,18 @@ function App() {
 
   // Sync local audio play/pause with global transport
   useEffect(() => {
-    if (musicSource?.source !== 'local') return
+    if (!hasLocalMusic) return
     if (playing) localAudio.play()
     else localAudio.pause()
-  }, [playing, musicSource?.source])
+  }, [playing, hasLocalMusic])
 
   // Sync spotify play/pause with global transport
+  const hasSpotify = scene?.music.sources.some((s) => s.type === 'spotify') ?? false
   useEffect(() => {
-    if (musicSource?.source !== 'spotify') return
+    if (!hasSpotify) return
     if (playing) spotify.play()
     else spotify.pause()
-  }, [playing, musicSource?.source])
+  }, [playing, hasSpotify])
 
   // SFX layer
   const sfx = useSfx(scene?.sfx.slots ?? [], playing)
@@ -85,7 +87,6 @@ function App() {
     try {
       const { scene: imported, sfxBlobs } = await importAmb(file)
       importScene(imported)
-      // Load SFX blobs into audio elements after store has the new scene
       const updated = useSceneStore.getState().activeScene()
       if (updated) {
         for (const slot of updated.sfx.slots) {
@@ -141,20 +142,20 @@ function App() {
   return (
     <div ref={appRef} className="relative flex h-screen bg-surface text-text-primary">
       {/* Video background layer */}
-      {scene && videoSource && (
+      {scene && (
         <>
-          {videoSource.source === 'local' && localVideo.currentUrl && (
+          {hasLocalVideo && localVideo.currentUrl && (
             <VideoPlayer src={localVideo.currentUrl} onEnded={handleVideoEnded} />
           )}
-          {videoSource.source === 'youtube' && (
-            <YouTubeVideoPlayer source={videoSource} />
+          {firstYouTubeVideo && (
+            <YouTubeVideoPlayer source={firstYouTubeVideo} />
           )}
         </>
       )}
 
       {/* Hidden YouTube music player */}
-      {scene && musicSource?.source === 'youtube' && (
-        <YouTubeMusicPlayer source={musicSource} />
+      {scene && firstYouTubeMusic && (
+        <YouTubeMusicPlayer source={firstYouTubeMusic} />
       )}
 
       {/* UI layer */}

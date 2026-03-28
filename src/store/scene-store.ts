@@ -26,15 +26,19 @@ interface SceneStore {
   togglePlayback: () => void
 
   // ─── Video Layer ─────────────────────────────────────────
-  setVideoSource: (source: VideoSource | null) => void
+  addVideoSource: (source: VideoSource) => void
+  removeVideoSource: (index: number) => void
   setVideoVolume: (volume: number) => void
   toggleVideoMute: () => void
+  toggleVideoShuffle: () => void
   toggleVideoContainsMusic: () => void
 
   // ─── Music Layer ─────────────────────────────────────────
-  setMusicSource: (source: MusicSource | null) => void
+  addMusicSource: (source: MusicSource) => void
+  removeMusicSource: (index: number) => void
   setMusicVolume: (volume: number) => void
   toggleMusicMute: () => void
+  toggleMusicShuffle: () => void
 
   // ─── SFX Layer ───────────────────────────────────────────
   addSfxSlot: (slot: Omit<SfxSlot, 'id'>) => void
@@ -140,8 +144,17 @@ export const useSceneStore = create<SceneStore>((set, get) => {
 
     // ─── Video Layer ─────────────────────────────────────
 
-    setVideoSource: (source) =>
-      updateActive(get, set, (s) => ({ ...s, video: { ...s.video, source } })),
+    addVideoSource: (source) =>
+      updateActive(get, set, (s) => ({
+        ...s,
+        video: { ...s.video, sources: [...s.video.sources, source] },
+      })),
+
+    removeVideoSource: (index) =>
+      updateActive(get, set, (s) => ({
+        ...s,
+        video: { ...s.video, sources: s.video.sources.filter((_, i) => i !== index) },
+      })),
 
     setVideoVolume: (volume) =>
       updateActive(get, set, (s) => ({ ...s, video: { ...s.video, volume } })),
@@ -152,6 +165,12 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         video: { ...s.video, muted: !s.video.muted },
       })),
 
+    toggleVideoShuffle: () =>
+      updateActive(get, set, (s) => ({
+        ...s,
+        video: { ...s.video, shuffle: !s.video.shuffle },
+      })),
+
     toggleVideoContainsMusic: () =>
       updateActive(get, set, (s) => ({
         ...s,
@@ -160,8 +179,17 @@ export const useSceneStore = create<SceneStore>((set, get) => {
 
     // ─── Music Layer ─────────────────────────────────────
 
-    setMusicSource: (source) =>
-      updateActive(get, set, (s) => ({ ...s, music: { ...s.music, source } })),
+    addMusicSource: (source) =>
+      updateActive(get, set, (s) => ({
+        ...s,
+        music: { ...s.music, sources: [...s.music.sources, source] },
+      })),
+
+    removeMusicSource: (index) =>
+      updateActive(get, set, (s) => ({
+        ...s,
+        music: { ...s.music, sources: s.music.sources.filter((_, i) => i !== index) },
+      })),
 
     setMusicVolume: (volume) =>
       updateActive(get, set, (s) => ({ ...s, music: { ...s.music, volume } })),
@@ -170,6 +198,12 @@ export const useSceneStore = create<SceneStore>((set, get) => {
       updateActive(get, set, (s) => ({
         ...s,
         music: { ...s.music, muted: !s.music.muted },
+      })),
+
+    toggleMusicShuffle: () =>
+      updateActive(get, set, (s) => ({
+        ...s,
+        music: { ...s.music, shuffle: !s.music.shuffle },
       })),
 
     // ─── SFX Layer ───────────────────────────────────────

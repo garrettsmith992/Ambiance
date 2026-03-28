@@ -16,22 +16,26 @@ The app is built around three independent, simultaneously-playing audio/video la
 
 ### Layer 1 — Video
 
-The visual backdrop of your scene. This can be:
+The visual backdrop of your scene. This is a **playlist** — you can add as many sources as you want and they all play through as one unified stream. Mix and match freely:
 
-- **Local video files** — a folder on your machine containing ambiance footage, gameplay recordings, scenic loops, whatever you want. The app reads the folder via the browser's File System Access API (no installation required, just folder permission) and plays them in sequence, shuffled, or looped.
-- **YouTube** — a playlist URL or individual video URL fed into the YouTube IFrame API. The video plays embedded in the background, with independent volume control so you can mute the YouTube audio entirely while still using it as a visual source.
+- **Local video folders** — one or more folders on your machine containing ambiance footage, gameplay recordings, scenic loops, whatever. The app reads each folder via the browser's File System Access API and pools all the files together.
+- **YouTube videos/playlists** — one or more YouTube URLs (individual videos or playlists). Each gets added to the same pool.
 
-The video layer is full-screen and sits behind everything else. Crossfading between clips as they transition gives it a cinematic, breathing quality rather than a jarring hard cut. The audio from the video source is independently controllable — you might want the crackling fireplace sound from your video, or you might want to mute it entirely and let the other layers carry the audio.
+All sources feed into a single playback queue. A **shuffle/order toggle** lets you play them randomly or in the order you added them. The video layer is full-screen and sits behind everything else. Crossfading between clips as they transition gives it a cinematic, breathing quality rather than a jarring hard cut.
+
+The audio from the video layer is independently controllable — you might want the crackling fireplace sound from your video, or you might want to mute it entirely and let the other layers carry the audio.
+
+*Future: image files (jpg/png) with zoom/pan effects for slideshow-style scenes.*
 
 ### Layer 2 — Music
 
-The musical backbone of the scene. Sources:
+The musical backbone of the scene. Like video, this is a **playlist** — add as many sources as you want:
 
-- **Local audio files** — a folder of MP3s, FLACs, whatever. Shuffle, loop, skip, volume. Straightforward playlist behavior.
-- **Spotify** — via the Spotify Web Playback SDK, which works entirely client-side with OAuth PKCE (no backend server needed). Point it at a playlist URI and it plays through the app. Requires a Spotify Premium account and a free developer app registration (takes five minutes, just needs your localhost added as a redirect URI).
-- **YouTube** — a music playlist URL fed into a hidden YouTube embed. Effective if you want to use YouTube Music playlists or specific ambient music compilations someone uploaded.
+- **Local audio folders** — one or more folders of MP3s, FLACs, whatever. All files are pooled together.
+- **Spotify playlists** — one or more Spotify URIs via the Spotify Web Playback SDK (client-side, OAuth PKCE, no backend). Requires Spotify Premium.
+- **YouTube playlists/videos** — one or more YouTube URLs fed into a hidden embed for audio-only playback.
 
-The music layer has its own volume slider, independent of everything else. You can fade the music down during a tense moment in whatever you're doing and back up when you want it.
+All sources feed into a single playback queue with a **shuffle/order toggle**. The music layer has its own volume slider, independent of everything else.
 
 ### Layer 3 — SFX (Sound Effects / Ambiance Sounds)
 
@@ -47,16 +51,20 @@ You can stack up to 8 SFX slots simultaneously. Each has its own volume slider a
 
 A practical example of a full scene:
 
-| Layer | Source | Content |
+| Layer | Sources | Settings |
 |---|---|---|
-| Video | Local folder | Skyrim gameplay footage, shuffled |
-| Music | Spotify | Skyrim OST playlist |
+| Video (playlist) | Local folder: `C:/Videos/Skyrim Gameplay/` | Shuffled |
+| | YouTube: `https://youtube.com/watch?v=xyzSkyrimWalk` | |
+| | YouTube: `https://youtube.com/watch?v=abcSkyrimScenery` | |
+| Music (playlist) | Spotify: `spotify:playlist:37i9dQZF1DWTwzVdyRpXm1` (Skyrim OST) | Shuffled |
+| | Local folder: `C:/Music/Fantasy Ambient/` | |
+| | YouTube: `https://youtube.com/watch?v=TavernMusic1hr` | |
 | SFX Slot 1 | Local file | heavy_rain.mp3 — Loop, vol 40% |
 | SFX Slot 2 | Local file | distant_thunder.mp3 — Interval 2–6 min, vol 60% |
 | SFX Slot 3 | Local file | dragon_roar.mp3 — Interval 5–12 min, vol 50% |
 | SFX Slot 4 | Local file | wind_howl.mp3 — Loop, vol 25% |
 
-The result is Skyrim's music playing over ambient gameplay footage while a realistic storm plays out around you with occasional dragon activity in the distance. That's something no existing app can produce.
+The result is a mix of Skyrim gameplay footage and scenic YouTube videos playing behind a blend of the official OST, your own ambient music folder, and a tavern music video — while a realistic storm plays out around you with occasional dragon activity in the distance. All of this from one scene, one play button. That's something no existing app can produce.
 
 ---
 
@@ -94,12 +102,23 @@ The `scene.json` handles sources by reference rather than by file when the conte
   "version": "1.0",
   "created": "2026-03-26",
   "video": {
-    "source": "youtube",
-    "playlist": "PLxxxxxxxxxxxxxx"
+    "sources": [
+      { "type": "youtube", "videoId": "xyzSkyrimWalk" },
+      { "type": "youtube", "playlistId": "PLxxxxxxxxxxxxxx" }
+    ],
+    "shuffle": true,
+    "volume": 0.5,
+    "muted": false,
+    "containsMusic": false
   },
   "music": {
-    "source": "spotify",
-    "uri": "spotify:playlist:xxxxxxxxxxxxxxxxx"
+    "sources": [
+      { "type": "spotify", "uri": "spotify:playlist:xxxxxxxxxxxxxxxxx" },
+      { "type": "youtube", "videoId": "TavernMusic1hr" }
+    ],
+    "shuffle": true,
+    "volume": 0.5,
+    "muted": false
   },
   "sfx": [
     {

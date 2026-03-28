@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSceneStore } from '@/store/index'
 import { Panel, Slider, IconButton } from '@/components/ui/index'
+import type { MusicSource } from '@/types/index'
 
 interface LocalAudioState {
   files: { name: string }[]
@@ -30,11 +31,20 @@ interface MusicPanelProps {
   spotify: SpotifyState
 }
 
+function sourceLabel(source: MusicSource): string {
+  if (source.type === 'local') return `📁 ${source.folderName}`
+  if (source.type === 'spotify') return `🎵 Spotify`
+  if (source.playlistId) return `▶ YT Playlist`
+  return `▶ YT Video`
+}
+
 export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
   const scene = useSceneStore((s) => s.activeScene())
   const setVolume = useSceneStore((s) => s.setMusicVolume)
   const toggleMute = useSceneStore((s) => s.toggleMusicMute)
-  const setMusicSource = useSceneStore((s) => s.setMusicSource)
+  const toggleShuffle = useSceneStore((s) => s.toggleMusicShuffle)
+  const addMusicSource = useSceneStore((s) => s.addMusicSource)
+  const removeMusicSource = useSceneStore((s) => s.removeMusicSource)
 
   const [youtubeInput, setYoutubeInput] = useState('')
   const [spotifyInput, setSpotifyInput] = useState('')
@@ -46,12 +56,7 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
 
   const handlePickFolder = async () => {
     await localAudio.pickFolder()
-    setMusicSource({
-      source: 'local',
-      folderName: 'Local Folder',
-      shuffle: true,
-      loop: true,
-    })
+    addMusicSource({ type: 'local', folderName: 'Local Folder' })
   }
 
   const handleYoutubeSubmit = () => {
@@ -61,11 +66,11 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
     const videoMatch = input.match(/(?:youtu\.be\/|v=)([^&?]+)/)
 
     if (playlistMatch) {
-      setMusicSource({ source: 'youtube', playlistId: playlistMatch[1] })
+      addMusicSource({ type: 'youtube', playlistId: playlistMatch[1] })
     } else if (videoMatch) {
-      setMusicSource({ source: 'youtube', videoId: videoMatch[1] })
+      addMusicSource({ type: 'youtube', videoId: videoMatch[1] })
     } else {
-      setMusicSource({ source: 'youtube', videoId: input })
+      addMusicSource({ type: 'youtube', videoId: input })
     }
     setShowYoutubeInput(false)
     setYoutubeInput('')
@@ -82,27 +87,23 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
   const handleSpotifySubmit = () => {
     const input = spotifyInput.trim()
     if (!input) return
-    // Accept spotify URIs or URLs
     let uri = input
     const urlMatch = input.match(/open\.spotify\.com\/(playlist|album|track)\/([a-zA-Z0-9]+)/)
     if (urlMatch) {
       uri = `spotify:${urlMatch[1]}:${urlMatch[2]}`
     }
-    setMusicSource({ source: 'spotify', uri })
+    addMusicSource({ type: 'spotify', uri })
     spotify.playUri(uri)
     setShowSpotifyInput(false)
     setSpotifyInput('')
   }
 
-  const handleClearSource = () => {
-    setMusicSource(null)
-  }
-
   // Determine current track display
   const trackDisplay = (() => {
-    if (!music.source) return null
-    if (music.source.source === 'local') return localAudio.currentTrack
-    if (music.source.source === 'spotify') return spotify.currentTrack
+    const hasLocal = music.sources.some((s) => s.type === 'local')
+    const hasSpotify = music.sources.some((s) => s.type === 'spotify')
+    if (hasLocal && localAudio.currentTrack) return localAudio.currentTrack
+    if (hasSpotify && spotify.currentTrack) return spotify.currentTrack
     return null
   })()
 
@@ -111,9 +112,13 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
       title="Music"
       headerRight={
         <div className="flex items-center gap-1">
-          {music.source && (
-            <IconButton onClick={handleClearSource} title="Remove source">✕</IconButton>
-          )}
+          <IconButton
+            onClick={toggleShuffle}
+            active={music.shuffle}
+            title={music.shuffle ? 'Shuffle on' : 'Shuffle off'}
+          >
+            🔀
+          </IconButton>
           <IconButton onClick={toggleMute} active={music.muted}>
             {music.muted ? '🔇' : '🔊'}
           </IconButton>
@@ -121,99 +126,100 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
       }
     >
       <div className="space-y-4">
-        {!music.source ? (
-          <div className="text-center py-6">
-            <p className="text-text-secondary text-sm mb-3">No music source selected</p>
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={handlePickFolder}
-                className="px-3 py-1.5 text-sm bg-surface-overlay border border-border rounded-md hover:border-accent transition-colors"
-              >
-                Local Folder
-              </button>
-              <button
-                onClick={handleSpotifyConnect}
-                className="px-3 py-1.5 text-sm bg-surface-overlay border border-border rounded-md hover:border-accent transition-colors"
-              >
-                {spotify.isAuthenticated ? 'Spotify' : 'Spotify (Connect)'}
-              </button>
-              <button
-                onClick={() => setShowYoutubeInput(true)}
-                className="px-3 py-1.5 text-sm bg-surface-overlay border border-border rounded-md hover:border-accent transition-colors"
-              >
-                YouTube
-              </button>
-            </div>
-
-            {showSpotifyInput && spotify.isAuthenticated && (
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  value={spotifyInput}
-                  onChange={(e) => setSpotifyInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSpotifySubmit()}
-                  placeholder="Spotify URI or URL"
-                  className="flex-1 px-3 py-1.5 text-sm bg-surface border border-border rounded-md focus:border-accent outline-none text-text-primary placeholder:text-text-secondary"
-                  autoFocus
-                />
+        {/* Source list */}
+        {music.sources.length > 0 && (
+          <div className="space-y-1">
+            {music.sources.map((source, i) => (
+              <div key={i} className="flex items-center justify-between py-1 text-sm">
+                <span className="text-text-secondary truncate">{sourceLabel(source)}</span>
                 <button
-                  onClick={handleSpotifySubmit}
-                  className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent-hover transition-colors"
+                  onClick={() => removeMusicSource(i)}
+                  className="text-xs text-text-secondary hover:text-red-400 transition-colors px-1"
                 >
-                  Play
+                  ✕
                 </button>
               </div>
-            )}
-
-            {showYoutubeInput && (
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  value={youtubeInput}
-                  onChange={(e) => setYoutubeInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleYoutubeSubmit()}
-                  placeholder="YouTube URL or playlist ID"
-                  className="flex-1 px-3 py-1.5 text-sm bg-surface border border-border rounded-md focus:border-accent outline-none text-text-primary placeholder:text-text-secondary"
-                  autoFocus
-                />
-                <button
-                  onClick={handleYoutubeSubmit}
-                  className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent-hover transition-colors"
-                >
-                  Load
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-text-secondary min-w-0 flex-1">
-                {music.source.source === 'local' && (
-                  <span>📁 Local · {localAudio.files.length} files</span>
-                )}
-                {music.source.source === 'spotify' && (
-                  <span>🎵 Spotify{spotify.isReady ? '' : ' (connecting...)'}</span>
-                )}
-                {music.source.source === 'youtube' && (
-                  <span>▶ YouTube · {music.source.playlistId ? 'Playlist' : 'Video'}</span>
-                )}
-              </div>
-              {music.source.source === 'local' && localAudio.hasFolder && (
-                <div className="flex gap-1">
-                  <IconButton onClick={localAudio.prev}>⏮</IconButton>
-                  <IconButton onClick={localAudio.next}>⏭</IconButton>
-                </div>
-              )}
-            </div>
-
-            {trackDisplay && (
-              <p className="text-xs text-text-secondary truncate">
-                ♪ {trackDisplay}
-              </p>
-            )}
+            ))}
           </div>
         )}
+
+        {/* Now playing */}
+        {localAudio.hasFolder && (
+          <div className="flex items-center justify-between text-xs text-text-secondary">
+            <span>{localAudio.currentIndex + 1}/{localAudio.files.length} files</span>
+            <div className="flex gap-1">
+              <IconButton onClick={localAudio.prev}>⏮</IconButton>
+              <IconButton onClick={localAudio.next}>⏭</IconButton>
+            </div>
+          </div>
+        )}
+
+        {trackDisplay && (
+          <p className="text-xs text-text-secondary truncate">♪ {trackDisplay}</p>
+        )}
+
+        {/* Add source buttons */}
+        <div className="flex gap-2 justify-center flex-wrap">
+          <button
+            onClick={handlePickFolder}
+            className="px-3 py-1.5 text-sm bg-surface-overlay border border-border rounded-md hover:border-accent transition-colors"
+          >
+            + Local Folder
+          </button>
+          <button
+            onClick={handleSpotifyConnect}
+            className="px-3 py-1.5 text-sm bg-surface-overlay border border-border rounded-md hover:border-accent transition-colors"
+          >
+            {spotify.isAuthenticated ? '+ Spotify' : '+ Spotify (Connect)'}
+          </button>
+          <button
+            onClick={() => setShowYoutubeInput(!showYoutubeInput)}
+            className="px-3 py-1.5 text-sm bg-surface-overlay border border-border rounded-md hover:border-accent transition-colors"
+          >
+            + YouTube
+          </button>
+        </div>
+
+        {showSpotifyInput && spotify.isAuthenticated && (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={spotifyInput}
+              onChange={(e) => setSpotifyInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSpotifySubmit()}
+              placeholder="Spotify URI or URL"
+              className="flex-1 px-3 py-1.5 text-sm bg-surface border border-border rounded-md focus:border-accent outline-none text-text-primary placeholder:text-text-secondary"
+              autoFocus
+            />
+            <button
+              onClick={handleSpotifySubmit}
+              className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent-hover transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        )}
+
+        {showYoutubeInput && (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={youtubeInput}
+              onChange={(e) => setYoutubeInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleYoutubeSubmit()}
+              placeholder="YouTube URL or playlist ID"
+              className="flex-1 px-3 py-1.5 text-sm bg-surface border border-border rounded-md focus:border-accent outline-none text-text-primary placeholder:text-text-secondary"
+              autoFocus
+            />
+            <button
+              onClick={handleYoutubeSubmit}
+              className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent-hover transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        )}
+
         <Slider label="Vol" value={music.volume} onChange={setVolume} />
       </div>
     </Panel>

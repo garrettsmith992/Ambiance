@@ -11,14 +11,16 @@ function sceneToManifest(scene: Scene): AmbManifest {
     version: scene.version,
     created: scene.created,
     video: {
-      source: scene.video.source,
+      sources: scene.video.sources,
+      shuffle: scene.video.shuffle,
       volume: scene.video.volume,
       muted: scene.video.muted,
       containsMusic: scene.video.containsMusic,
       tags: scene.video.tags,
     },
     music: {
-      source: scene.music.source,
+      sources: scene.music.sources,
+      shuffle: scene.music.shuffle,
       volume: scene.music.volume,
       muted: scene.music.muted,
       tags: scene.music.tags,
@@ -42,21 +44,17 @@ function sceneToManifest(scene: Scene): AmbManifest {
  */
 export function getLocalSourceWarnings(scene: Scene): string[] {
   const warnings: string[] = []
-  if (scene.video.source?.source === 'local') {
-    warnings.push('Video is set to a local folder — it won\'t be accessible on another machine.')
+  if (scene.video.sources.some((s) => s.type === 'local')) {
+    warnings.push('Video has local folder sources — they won\'t be accessible on another machine.')
   }
-  if (scene.music.source?.source === 'local') {
-    warnings.push('Music is set to a local folder — it won\'t be accessible on another machine.')
+  if (scene.music.sources.some((s) => s.type === 'local')) {
+    warnings.push('Music has local folder sources — they won\'t be accessible on another machine.')
   }
   return warnings
 }
 
 /**
  * Export a scene as a .amb file (zip containing scene.json + sfx/ audio files).
- *
- * @param scene The scene to export
- * @param getFileHandle Function to retrieve the FileSystemFileHandle for an SFX slot
- * @returns Blob of the .amb file, or null if cancelled/failed
  */
 export async function exportAmb(
   scene: Scene,
@@ -76,7 +74,6 @@ export async function exportAmb(
 
   // Bundle preview image if present
   if (scene.previewImage) {
-    // previewImage is a data URI — extract the base64 portion
     const match = scene.previewImage.match(/^data:([^;]+);base64,(.+)$/)
     if (match) {
       const ext = match[1].split('/')[1] || 'jpg'
@@ -92,10 +89,6 @@ export async function exportAmb(
 
 /**
  * Import a .amb file and reconstruct a Scene from it.
- *
- * @param file The .amb file (File or Blob)
- * @returns The reconstructed Scene with blob URLs for SFX files, plus
- *          a map of slotId → Blob so the caller can load them into the SFX hook
  */
 export async function importAmb(
   file: File | Blob,
@@ -114,14 +107,16 @@ export async function importAmb(
     version: manifest.version,
     created: manifest.created,
     video: {
-      source: manifest.video.source,
+      sources: manifest.video.sources,
+      shuffle: manifest.video.shuffle,
       volume: manifest.video.volume,
       muted: manifest.video.muted,
       containsMusic: manifest.video.containsMusic,
       tags: manifest.video.tags,
     },
     music: {
-      source: manifest.music.source,
+      sources: manifest.music.sources,
+      shuffle: manifest.music.shuffle,
       volume: manifest.music.volume,
       muted: manifest.music.muted,
       tags: manifest.music.tags,
@@ -130,7 +125,6 @@ export async function importAmb(
       slots: manifest.sfx.map((s) => ({
         id: crypto.randomUUID(),
         name: s.name,
-        // Strip the "sfx/" prefix for the runtime file field
         file: s.file.replace(/^sfx\//, ''),
         mode: s.mode,
         volume: s.volume,
@@ -151,7 +145,7 @@ export async function importAmb(
     scene.previewImage = `data:image/${ext};base64,${data}`
   }
 
-  // Extract SFX blobs (caller will load them into the audio hook)
+  // Extract SFX blobs
   const sfxBlobs = new Map<string, { blob: Blob; filename: string }>()
   for (const slot of scene.sfx.slots) {
     const sfxFile = zip.file(`sfx/${slot.file}`)
