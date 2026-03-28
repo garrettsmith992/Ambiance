@@ -202,9 +202,11 @@ Ambiance's specific combination — local or streaming video + local or streamin
   - `src/components/sfx/SfxPanel.tsx` — full UI: add slot (file picker), mode toggle (loop/interval), volume slider, interval min/max range sliders (5s–10min), mute, remove
   - Global transport sync: SFX slots start/stop with play/pause, interval scheduling clears on pause
 
-- [ ] **Phase 5 — Scene management**
+- [x] **Phase 5 — Scene management**
   Scene browser UI polish. Rename, duplicate, reorder. Preview thumbnails.
   *(Note: Zustand store + localStorage persistence already done in Phase 1.)*
+  - `src/store/scene-store.ts` — added `reorderScene` (swap up/down) and `setPreviewImage` actions
+  - `src/components/scene/SceneSidebar.tsx` — inline rename (click-to-edit), context menu (···) with rename/duplicate/move up/move down/delete, preview thumbnail display
 
 - [ ] **Phase 6 — .amb format**
   Export scene as `.amb` zip (scene.json + bundled SFX + preview image). Import `.amb` file drag-and-drop. Local path warning on export. Uses JSZip (already installed).
@@ -241,4 +243,4 @@ If starting a new chat, the key files to read first:
 
 ---
 
-*Last updated March 28, 2026 — Phases 1–4 complete, Phase 5 (scene management polish) next.*
+*Last updated March 28, 2026 — Phases 1–5 complete, Phase 6 (.amb format) next.*

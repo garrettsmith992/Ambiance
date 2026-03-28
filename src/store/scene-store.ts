@@ -41,6 +41,10 @@ interface SceneStore {
   removeSfxSlot: (slotId: string) => void
   updateSfxSlot: (slotId: string, updates: Partial<SfxSlot>) => void
 
+  // ─── Scene Management ───────────────────────────────────
+  reorderScene: (id: string, direction: 'up' | 'down') => void
+  setPreviewImage: (id: string, dataUri: string) => void
+
   // ─── Tags ────────────────────────────────────────────────
   addSceneTag: (tag: string) => void
   removeSceneTag: (tag: string) => void
@@ -193,6 +197,28 @@ export const useSceneStore = create<SceneStore>((set, get) => {
           ),
         },
       })),
+
+    // ─── Scene Management ─────────────────────────────────
+
+    reorderScene: (id, direction) => {
+      const { scenes } = get()
+      const idx = scenes.findIndex((s) => s.id === id)
+      if (idx === -1) return
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (targetIdx < 0 || targetIdx >= scenes.length) return
+      const updated = [...scenes]
+      ;[updated[idx], updated[targetIdx]] = [updated[targetIdx], updated[idx]]
+      set({ scenes: updated })
+      saveScenes(updated)
+    },
+
+    setPreviewImage: (id, dataUri) => {
+      const updated = get().scenes.map((s) =>
+        s.id === id ? { ...s, previewImage: dataUri } : s,
+      )
+      set({ scenes: updated })
+      saveScenes(updated)
+    },
 
     // ─── Tags ────────────────────────────────────────────
 
