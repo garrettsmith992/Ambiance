@@ -180,11 +180,21 @@ Ambiance's specific combination — local or streaming video + local or streamin
   - `tags: string[]` on all entities, `containsMusic: boolean` on VideoLayer — baked into schema from day one
   - Path alias `@/` configured for clean imports
 
-- [ ] **Phase 2 — Video layer**
-  Local folder picker via File System Access API. Shuffle/loop playback. YouTube IFrame integration. Volume + mute. Crossfade between clips.
+- [x] **Phase 2 — Video layer**
+  Local folder picker via File System Access API. Shuffle/loop playback. YouTube IFrame integration. Volume + mute. 2-second crossfade between clips. Fullscreen mode with auto-hiding UI overlay.
+  - `src/hooks/use-local-video.ts` — folder picker, blob URL management, shuffle, prev/next
+  - `src/hooks/use-youtube-player.ts` — YouTube IFrame API singleton loader
+  - `src/components/video/VideoPlayer.tsx` — local video with crossfade
+  - `src/components/video/YouTubePlayer.tsx` — YouTube embed
+  - Fullscreen via Fullscreen API, UI auto-hides after 3s inactivity
 
-- [ ] **Phase 3 — Music layer**
-  Local audio folder playback. Spotify SDK integration. YouTube playlist as audio source. Independent volume. Auto-duck or skip when video `containsMusic` is true.
+- [x] **Phase 3 — Music layer**
+  Local audio folder playback. Spotify Web Playback SDK with OAuth PKCE (no backend). YouTube hidden embed for audio-only. Global transport syncs play/pause across sources.
+  - `src/hooks/use-local-audio.ts` — audio folder picker, auto-advance, play/pause
+  - `src/hooks/use-spotify.ts` — PKCE auth flow, Web Playback SDK, play URIs
+  - `src/components/music/YouTubeMusicPlayer.tsx` — hidden YouTube embed
+  - Spotify client ID stored in localStorage (`ambiance-spotify-client-id`)
+  - TODO: Auto-duck music when video `containsMusic` is true (deferred to polish)
 
 - [ ] **Phase 4 — SFX layer**
   Multiple addable/removable SFX slots. Loop mode. Interval mode with min/max sliders. Per-slot volume and mute. Up to 8 simultaneous slots. `setTimeout` with randomized ranges, self-rescheduling.
@@ -205,16 +215,16 @@ Ambiance's specific combination — local or streaming video + local or streamin
 
 ```
 src/
-├── types/          ← scene.json schema (Scene, VideoLayer, MusicLayer, SfxSlot, AmbManifest)
+├── types/          ← scene.json schema + global.d.ts (File System Access, YT IFrame API)
 ├── store/          ← Zustand store (scene CRUD, layer controls, tags)
 ├── lib/            ← defaults, localStorage persistence
+├── hooks/          ← use-local-video, use-local-audio, use-youtube-player, use-spotify
 ├── components/
 │   ├── ui/         ← Panel, Slider, IconButton
-│   ├── video/      ← VideoPanel
-│   ├── music/      ← MusicPanel
+│   ├── video/      ← VideoPanel, VideoPlayer, YouTubePlayer
+│   ├── music/      ← MusicPanel, YouTubeMusicPlayer
 │   ├── sfx/        ← SfxPanel
 │   └── scene/      ← SceneSidebar, TransportBar
-└── hooks/          ← (ready for audio/video engine hooks)
 ```
 
 ---
@@ -228,4 +238,4 @@ If starting a new chat, the key files to read first:
 
 ---
 
-*Last updated March 26, 2026 — Phase 1 complete, Phase 2 next.*
+*Last updated March 28, 2026 — Phases 1–3 complete, Phase 4 (SFX layer) next.*
