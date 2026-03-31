@@ -18,6 +18,7 @@ export function VideoPlayer({ src, onEnded }: VideoPlayerProps) {
   const [activeOpacity, setActiveOpacity] = useState(1)
   const [nextSrc, setNextSrc] = useState<string | null>(null)
   const crossfading = useRef(false)
+  const prevSrcRef = useRef<string | null>(null)
 
   // Sync volume
   useEffect(() => {
@@ -29,6 +30,30 @@ export function VideoPlayer({ src, onEnded }: VideoPlayerProps) {
     }
   }, [volume, muted])
 
+  // When src changes (new video loaded after advancement), swap it into the active player
+  useEffect(() => {
+    if (!src || !activeRef.current) return
+
+    // If we're crossfading, the new src is for the "next" player
+    if (crossfading.current) {
+      setNextSrc(src)
+      if (nextRef.current) {
+        nextRef.current.src = src
+        nextRef.current.volume = muted ? 0 : volume
+        nextRef.current.play().catch(() => {})
+      }
+      return
+    }
+
+    // Normal source change — load into active player
+    if (src !== prevSrcRef.current) {
+      activeRef.current.src = src
+      activeRef.current.volume = muted ? 0 : volume
+      if (playing) activeRef.current.play().catch(() => {})
+      prevSrcRef.current = src
+    }
+  }, [src])
+
   // Play/pause sync
   useEffect(() => {
     if (!activeRef.current || !src) return
@@ -39,16 +64,6 @@ export function VideoPlayer({ src, onEnded }: VideoPlayerProps) {
     }
   }, [playing, src])
 
-  // Load new src
-  useEffect(() => {
-    if (!src || !activeRef.current) return
-    if (!crossfading.current) {
-      activeRef.current.src = src
-      activeRef.current.volume = muted ? 0 : volume
-      if (playing) activeRef.current.play().catch(() => {})
-    }
-  }, [src])
-
   const handleTimeUpdate = useCallback(() => {
     const video = activeRef.current
     if (!video || crossfading.current) return
@@ -56,17 +71,25 @@ export function VideoPlayer({ src, onEnded }: VideoPlayerProps) {
     const remaining = video.duration - video.currentTime
     if (remaining <= CROSSFADE_MS / 1000 && remaining > 0) {
       crossfading.current = true
-      setNextSrc(src)
       setActiveOpacity(0)
 
+      // Tell parent to advance — this will change `src` prop to the next video
+      onEnded()
+
       setTimeout(() => {
+        // Swap: next becomes active
+        if (activeRef.current && nextRef.current && nextSrc) {
+          activeRef.current.src = nextRef.current.src
+          activeRef.current.currentTime = nextRef.current.currentTime
+          activeRef.current.play().catch(() => {})
+        }
         crossfading.current = false
         setActiveOpacity(1)
         setNextSrc(null)
-        onEnded()
+        prevSrcRef.current = src
       }, CROSSFADE_MS)
     }
-  }, [src, onEnded])
+  }, [src, onEnded, nextSrc])
 
   const handleEnded = useCallback(() => {
     if (!crossfading.current) {

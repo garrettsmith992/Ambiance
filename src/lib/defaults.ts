@@ -6,7 +6,6 @@ export function createDefaultVideoLayer(): VideoLayer {
     shuffle: true,
     volume: 0.5,
     muted: false,
-    containsMusic: false,
     tags: [],
   }
 }

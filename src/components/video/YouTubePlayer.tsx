@@ -7,9 +7,10 @@ const CONTAINER_ID = 'yt-video-player'
 
 interface YouTubeVideoPlayerProps {
   source: VideoSourceYouTube
+  onEnded?: () => void
 }
 
-export function YouTubeVideoPlayer({ source }: YouTubeVideoPlayerProps) {
+export function YouTubeVideoPlayer({ source, onEnded }: YouTubeVideoPlayerProps) {
   const volume = useSceneStore((s) => s.activeScene()?.video.volume ?? 0.5)
   const muted = useSceneStore((s) => s.activeScene()?.video.muted ?? false)
   const playing = useSceneStore((s) => s.playing)
@@ -18,6 +19,7 @@ export function YouTubeVideoPlayer({ source }: YouTubeVideoPlayerProps) {
     containerId: CONTAINER_ID,
     volume,
     muted,
+    onEnded,
   })
 
   // Load content when source changes

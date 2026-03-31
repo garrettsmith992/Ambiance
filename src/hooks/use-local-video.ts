@@ -10,7 +10,7 @@ interface UseLocalVideoReturn {
   files: LocalVideoFile[]
   currentIndex: number
   currentUrl: string | null
-  pickFolder: () => Promise<void>
+  pickFolder: () => Promise<boolean>
   next: () => void
   prev: () => void
   hasFolder: boolean
@@ -57,7 +57,7 @@ export function useLocalVideo(shuffle = false): UseLocalVideoReturn {
     setCurrentUrl(url)
   }, [])
 
-  const pickFolder = useCallback(async () => {
+  const pickFolder = useCallback(async (): Promise<boolean> => {
     try {
       const dirHandle = await window.showDirectoryPicker()
       const videoFiles: LocalVideoFile[] = []
@@ -68,14 +68,16 @@ export function useLocalVideo(shuffle = false): UseLocalVideoReturn {
         }
       }
 
-      if (videoFiles.length === 0) return
+      if (videoFiles.length === 0) return false
 
       const ordered = shuffle ? shuffleArray(videoFiles) : videoFiles.sort((a, b) => a.name.localeCompare(b.name))
       setFiles(ordered)
       setCurrentIndex(0)
       await loadFileUrl(ordered[0])
+      return true
     } catch {
       // User cancelled the picker
+      return false
     }
   }, [shuffle, loadFileUrl])
 

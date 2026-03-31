@@ -121,10 +121,11 @@ export function useSpotify({ clientId, volume, muted }: UseSpotifyOptions): UseS
     // Check for auth callback
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
-    if (code && clientId) {
+    const cid = clientId || localStorage.getItem('ambiance-spotify-client-id')?.trim() || ''
+    if (code && cid) {
       const verifier = sessionStorage.getItem('spotify-code-verifier')
       if (verifier) {
-        exchangeToken(code, verifier, clientId)
+        exchangeToken(code, verifier, cid)
       }
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname)
@@ -205,21 +206,27 @@ export function useSpotify({ clientId, volume, muted }: UseSpotifyOptions): UseS
   }, [volume, muted, isReady])
 
   const authenticate = useCallback(async () => {
-    if (!clientId) return
-    const verifier = generateCodeVerifier()
-    const challenge = await generateCodeChallenge(verifier)
-    sessionStorage.setItem('spotify-code-verifier', verifier)
+    try {
+      // Read client ID fresh from localStorage in case the user just saved it
+      const cid = clientId || localStorage.getItem('ambiance-spotify-client-id')?.trim() || ''
+      if (!cid) return
+      const verifier = generateCodeVerifier()
+      const challenge = await generateCodeChallenge(verifier)
+      sessionStorage.setItem('spotify-code-verifier', verifier)
 
-    const params = new URLSearchParams({
-      client_id: clientId,
-      response_type: 'code',
-      redirect_uri: REDIRECT_URI,
-      scope: SCOPES,
-      code_challenge_method: 'S256',
-      code_challenge: challenge,
-    })
+      const params = new URLSearchParams({
+        client_id: cid,
+        response_type: 'code',
+        redirect_uri: REDIRECT_URI,
+        scope: SCOPES,
+        code_challenge_method: 'S256',
+        code_challenge: challenge,
+      })
 
-    window.location.href = `https://accounts.spotify.com/authorize?${params}`
+      window.location.href = `https://accounts.spotify.com/authorize?${params}`
+    } catch {
+      // Auth failed silently
+    }
   }, [clientId])
 
   const playUri = useCallback(async (uri: string) => {

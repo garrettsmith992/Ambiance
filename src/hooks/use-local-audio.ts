@@ -10,7 +10,7 @@ interface UseLocalAudioReturn {
   files: LocalAudioFile[]
   currentIndex: number
   currentTrack: string | null
-  pickFolder: () => Promise<void>
+  pickFolder: () => Promise<boolean>
   next: () => void
   prev: () => void
   play: () => void
@@ -85,7 +85,7 @@ export function useLocalAudio(shuffle = false, volume = 0.5, muted = false): Use
     loadAndPlay()
   }, [currentIndex, files])
 
-  const pickFolder = useCallback(async () => {
+  const pickFolder = useCallback(async (): Promise<boolean> => {
     try {
       const dirHandle = await window.showDirectoryPicker()
       const audioFiles: LocalAudioFile[] = []
@@ -96,15 +96,17 @@ export function useLocalAudio(shuffle = false, volume = 0.5, muted = false): Use
         }
       }
 
-      if (audioFiles.length === 0) return
+      if (audioFiles.length === 0) return false
 
       const ordered = shuffle
         ? shuffleArray(audioFiles)
         : audioFiles.sort((a, b) => a.name.localeCompare(b.name))
       setFiles(ordered)
       setCurrentIndex(0)
+      return true
     } catch {
       // User cancelled
+      return false
     }
   }, [shuffle])
 

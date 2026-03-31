@@ -7,7 +7,7 @@ interface LocalVideoState {
   files: { name: string }[]
   currentIndex: number
   hasFolder: boolean
-  pickFolder: () => Promise<void>
+  pickFolder: () => Promise<boolean>
   next: () => void
   prev: () => void
 }
@@ -29,7 +29,9 @@ export function VideoPanel({ localVideo }: VideoPanelProps) {
   const toggleShuffle = useSceneStore((s) => s.toggleVideoShuffle)
   const addVideoSource = useSceneStore((s) => s.addVideoSource)
   const removeVideoSource = useSceneStore((s) => s.removeVideoSource)
-  const toggleContainsMusic = useSceneStore((s) => s.toggleVideoContainsMusic)
+  const moveVideoSource = useSceneStore((s) => s.moveVideoSource)
+  const toggleSourceContainsMusic = useSceneStore((s) => s.toggleVideoSourceContainsMusic)
+  const videoSourceIndex = useSceneStore((s) => s.videoSourceIndex)
 
   const [youtubeInput, setYoutubeInput] = useState('')
   const [showYoutubeInput, setShowYoutubeInput] = useState(false)
@@ -38,8 +40,10 @@ export function VideoPanel({ localVideo }: VideoPanelProps) {
   const { video } = scene
 
   const handlePickFolder = async () => {
-    await localVideo.pickFolder()
-    addVideoSource({ type: 'local', folderName: 'Local Folder' })
+    const picked = await localVideo.pickFolder()
+    if (picked) {
+      addVideoSource({ type: 'local', folderName: 'Local Folder' })
+    }
   }
 
   const handleYoutubeSubmit = () => {
@@ -62,7 +66,7 @@ export function VideoPanel({ localVideo }: VideoPanelProps) {
 
   return (
     <Panel
-      title="Video"
+      title={`Video${video.sources.length > 0 ? ` (${video.sources.length})` : ''}`}
       headerRight={
         <div className="flex items-center gap-1">
           <IconButton
@@ -83,14 +87,50 @@ export function VideoPanel({ localVideo }: VideoPanelProps) {
         {video.sources.length > 0 && (
           <div className="space-y-1">
             {video.sources.map((source, i) => (
-              <div key={i} className="flex items-center justify-between py-1 text-sm">
-                <span className="text-text-secondary truncate">{sourceLabel(source)}</span>
-                <button
-                  onClick={() => removeVideoSource(i)}
-                  className="text-xs text-text-secondary hover:text-red-400 transition-colors px-1"
-                >
-                  ✕
-                </button>
+              <div
+                key={i}
+                className={`flex items-center justify-between py-1 text-sm rounded px-1 ${
+                  i === videoSourceIndex ? 'bg-surface-overlay' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate min-w-0">
+                  <span className={`truncate ${i === videoSourceIndex ? 'text-accent' : 'text-text-secondary'}`}>
+                    {sourceLabel(source)}
+                  </span>
+                  <label className="flex items-center gap-1 text-xs text-text-secondary shrink-0 cursor-pointer" title="Has its own music">
+                    <input
+                      type="checkbox"
+                      checked={source.containsMusic ?? false}
+                      onChange={() => toggleSourceContainsMusic(i)}
+                      className="accent-accent"
+                    />
+                    ♪
+                  </label>
+                </div>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() => moveVideoSource(i, 'up')}
+                    disabled={i === 0}
+                    className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-25 transition-colors px-0.5"
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    onClick={() => moveVideoSource(i, 'down')}
+                    disabled={i === video.sources.length - 1}
+                    className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-25 transition-colors px-0.5"
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    onClick={() => removeVideoSource(i)}
+                    className="text-xs text-text-secondary hover:text-red-400 transition-colors px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -142,16 +182,6 @@ export function VideoPanel({ localVideo }: VideoPanelProps) {
             </button>
           </div>
         )}
-
-        <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-          <input
-            type="checkbox"
-            checked={video.containsMusic}
-            onChange={toggleContainsMusic}
-            className="accent-accent"
-          />
-          Video contains its own music
-        </label>
 
         <Slider label="Vol" value={video.volume} onChange={setVolume} />
       </div>

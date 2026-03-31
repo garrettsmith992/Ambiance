@@ -15,7 +15,6 @@ function sceneToManifest(scene: Scene): AmbManifest {
       shuffle: scene.video.shuffle,
       volume: scene.video.volume,
       muted: scene.video.muted,
-      containsMusic: scene.video.containsMusic,
       tags: scene.video.tags,
     },
     music: {
@@ -111,7 +110,6 @@ export async function importAmb(
       shuffle: manifest.video.shuffle,
       volume: manifest.video.volume,
       muted: manifest.video.muted,
-      containsMusic: manifest.video.containsMusic,
       tags: manifest.video.tags,
     },
     music: {

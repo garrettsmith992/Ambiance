@@ -10,6 +10,8 @@ export interface VideoSourceLocal {
   type: 'local'
   /** Display name or folder path — resolved at runtime via File System Access API */
   folderName: string
+  /** Whether this video source contains its own music/soundtrack */
+  containsMusic?: boolean
 }
 
 export interface VideoSourceYouTube {
@@ -17,6 +19,8 @@ export interface VideoSourceYouTube {
   /** YouTube playlist ID or single video ID */
   videoId?: string
   playlistId?: string
+  /** Whether this video source contains its own music/soundtrack */
+  containsMusic?: boolean
 }
 
 export type VideoSource = VideoSourceLocal | VideoSourceYouTube
@@ -26,8 +30,6 @@ export interface VideoLayer {
   shuffle: boolean
   volume: number
   muted: boolean
-  /** Whether the video source contains its own music/soundtrack */
-  containsMusic: boolean
   tags: string[]
 }
 
@@ -68,12 +70,14 @@ export interface SfxSlot {
   name: string
   /** Relative path inside .amb (e.g. "sfx/rain.mp3") or runtime file reference */
   file: string
+  /** Additional file names when slot was loaded from a folder of variants */
+  files?: string[]
   mode: SfxMode
   volume: number
   muted: boolean
-  /** Interval mode: minimum delay in ms before replaying */
+  /** Interval mode: minimum delay in ms after clip ends before replaying */
   minMs: number
-  /** Interval mode: maximum delay in ms before replaying */
+  /** Interval mode: maximum delay in ms after clip ends before replaying */
   maxMs: number
   tags: string[]
 }
@@ -108,7 +112,6 @@ export interface AmbManifest {
     shuffle: boolean
     volume: number
     muted: boolean
-    containsMusic: boolean
     tags: string[]
   }
   music: {

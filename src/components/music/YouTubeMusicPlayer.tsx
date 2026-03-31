@@ -7,9 +7,10 @@ const CONTAINER_ID = 'yt-music-player'
 
 interface YouTubeMusicPlayerProps {
   source: MusicSourceYouTube
+  onEnded?: () => void
 }
 
-export function YouTubeMusicPlayer({ source }: YouTubeMusicPlayerProps) {
+export function YouTubeMusicPlayer({ source, onEnded }: YouTubeMusicPlayerProps) {
   const volume = useSceneStore((s) => s.activeScene()?.music.volume ?? 0.5)
   const muted = useSceneStore((s) => s.activeScene()?.music.muted ?? false)
   const playing = useSceneStore((s) => s.playing)
@@ -18,6 +19,7 @@ export function YouTubeMusicPlayer({ source }: YouTubeMusicPlayerProps) {
     containerId: CONTAINER_ID,
     volume,
     muted,
+    onEnded,
   })
 
   useEffect(() => {

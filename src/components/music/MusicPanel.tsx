@@ -8,7 +8,7 @@ interface LocalAudioState {
   currentIndex: number
   currentTrack: string | null
   hasFolder: boolean
-  pickFolder: () => Promise<void>
+  pickFolder: () => Promise<boolean>
   next: () => void
   prev: () => void
   play: () => void
@@ -45,6 +45,8 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
   const toggleShuffle = useSceneStore((s) => s.toggleMusicShuffle)
   const addMusicSource = useSceneStore((s) => s.addMusicSource)
   const removeMusicSource = useSceneStore((s) => s.removeMusicSource)
+  const moveMusicSource = useSceneStore((s) => s.moveMusicSource)
+  const musicSourceIndex = useSceneStore((s) => s.musicSourceIndex)
 
   const [youtubeInput, setYoutubeInput] = useState('')
   const [spotifyInput, setSpotifyInput] = useState('')
@@ -55,8 +57,10 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
   const { music } = scene
 
   const handlePickFolder = async () => {
-    await localAudio.pickFolder()
-    addMusicSource({ type: 'local', folderName: 'Local Folder' })
+    const picked = await localAudio.pickFolder()
+    if (picked) {
+      addMusicSource({ type: 'local', folderName: 'Local Folder' })
+    }
   }
 
   const handleYoutubeSubmit = () => {
@@ -109,7 +113,7 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
 
   return (
     <Panel
-      title="Music"
+      title={`Music${music.sources.length > 0 ? ` (${music.sources.length})` : ''}`}
       headerRight={
         <div className="flex items-center gap-1">
           <IconButton
@@ -130,14 +134,39 @@ export function MusicPanel({ localAudio, spotify }: MusicPanelProps) {
         {music.sources.length > 0 && (
           <div className="space-y-1">
             {music.sources.map((source, i) => (
-              <div key={i} className="flex items-center justify-between py-1 text-sm">
-                <span className="text-text-secondary truncate">{sourceLabel(source)}</span>
-                <button
-                  onClick={() => removeMusicSource(i)}
-                  className="text-xs text-text-secondary hover:text-red-400 transition-colors px-1"
-                >
-                  ✕
-                </button>
+              <div
+                key={i}
+                className={`flex items-center justify-between py-1 text-sm rounded px-1 ${
+                  i === musicSourceIndex ? 'bg-surface-overlay' : ''
+                }`}
+              >
+                <span className={`truncate ${i === musicSourceIndex ? 'text-accent' : 'text-text-secondary'}`}>
+                  {sourceLabel(source)}
+                </span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() => moveMusicSource(i, 'up')}
+                    disabled={i === 0}
+                    className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-25 transition-colors px-0.5"
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    onClick={() => moveMusicSource(i, 'down')}
+                    disabled={i === music.sources.length - 1}
+                    className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-25 transition-colors px-0.5"
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    onClick={() => removeMusicSource(i)}
+                    className="text-xs text-text-secondary hover:text-red-400 transition-colors px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>

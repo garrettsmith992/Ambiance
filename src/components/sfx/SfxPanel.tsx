@@ -7,9 +7,10 @@ type SfxHook = ReturnType<typeof useSfx>
 
 // ─── Per-slot row ──────────────────────────────────────────────
 
-function SfxSlotRow({ slot }: { slot: SfxSlot }) {
+function SfxSlotRow({ slot, sfx }: { slot: SfxSlot; sfx: SfxHook }) {
   const updateSlot = useSceneStore((s) => s.updateSfxSlot)
   const removeSlot = useSceneStore((s) => s.removeSfxSlot)
+  const isLoaded = sfx.isSlotLoaded(slot.id)
 
   const toggleMode = () => {
     const next: SfxMode = slot.mode === 'loop' ? 'interval' : 'loop'
@@ -24,9 +25,23 @@ function SfxSlotRow({ slot }: { slot: SfxSlot }) {
 
   return (
     <div className="py-3 border-b border-border last:border-0 space-y-2">
-      {/* Top row: name, mode badge, mute, remove */}
+      {/* Reload prompt when file not loaded */}
+      {!isLoaded && (
+        <button
+          onClick={() => sfx.reloadSlotFile(slot.id)}
+          className="w-full py-1.5 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded hover:bg-amber-400/20 transition-colors"
+        >
+          File not loaded — click to re-select "{slot.file}"
+        </button>
+      )}
+      {/* Top row: name, variant count, mode badge, mute, remove */}
       <div className="flex items-center gap-2">
-        <span className="text-sm truncate flex-1 min-w-0">{slot.name}</span>
+        <span className={`text-sm truncate flex-1 min-w-0 ${!isLoaded ? 'text-text-secondary opacity-50' : ''}`}>
+          {slot.name}
+          {slot.files && slot.files.length > 0 && (
+            <span className="text-xs text-text-secondary ml-1">({slot.files.length + 1} variants)</span>
+          )}
+        </span>
         <button
           onClick={toggleMode}
           className="text-xs px-1.5 py-0.5 rounded bg-surface-overlay text-text-secondary hover:text-text-primary hover:border-accent border border-border transition-colors"
@@ -53,11 +68,11 @@ function SfxSlotRow({ slot }: { slot: SfxSlot }) {
       {slot.mode === 'interval' && (
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16 shrink-0">Min</span>
+            <span className="text-xs text-text-secondary w-16 shrink-0">Delay min</span>
             <input
               type="range"
-              min={5}
-              max={600}
+              min={0}
+              max={3600}
               step={5}
               value={Math.round(slot.minMs / 1000)}
               onChange={(e) => {
@@ -75,11 +90,11 @@ function SfxSlotRow({ slot }: { slot: SfxSlot }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16 shrink-0">Max</span>
+            <span className="text-xs text-text-secondary w-16 shrink-0">Delay max</span>
             <input
               type="range"
-              min={5}
-              max={600}
+              min={0}
+              max={3600}
               step={5}
               value={Math.round(slot.maxMs / 1000)}
               onChange={(e) => {
@@ -117,27 +132,22 @@ export function SfxPanel({ sfx }: { sfx: SfxHook }) {
   if (!scene) return null
 
   const { slots } = scene.sfx
-  const canAdd = slots.length < 8
-
-  const handleAdd = async () => {
+  const handleAddFile = async () => {
     const result = await sfx.pickFile()
     if (!result) return
 
-    // Build slot data (without id — store generates it)
     const slotData = {
       name: result.name.replace(/\.[^.]+$/, ''),
       file: result.name,
-      mode: 'loop' as const,
+      mode: 'interval' as const,
       volume: 0.5,
       muted: false,
-      minMs: 0,
-      maxMs: 0,
+      minMs: 60_000,
+      maxMs: 300_000,
       tags: [],
     }
     addSlot(slotData)
 
-    // We need the id that the store assigned. Read it back from the updated scene.
-    // The new slot is always appended last.
     const updated = useSceneStore.getState().activeScene()
     if (!updated) return
     const newSlot = updated.sfx.slots[updated.sfx.slots.length - 1]
@@ -146,18 +156,50 @@ export function SfxPanel({ sfx }: { sfx: SfxHook }) {
     }
   }
 
+  const handleAddFolder = async () => {
+    const result = await sfx.pickFolder()
+    if (!result) return
+
+    const slotData = {
+      name: result.name,
+      file: result.files[0].name,
+      files: result.files.map((f) => f.name),
+      mode: 'interval' as const,
+      volume: 0.5,
+      muted: false,
+      minMs: 60_000,
+      maxMs: 300_000,
+      tags: [],
+    }
+    addSlot(slotData)
+
+    const updated = useSceneStore.getState().activeScene()
+    if (!updated) return
+    const newSlot = updated.sfx.slots[updated.sfx.slots.length - 1]
+    if (newSlot) {
+      await sfx.loadSlotFolder(newSlot.id, result.files.map((f) => f.handle))
+    }
+  }
+
   return (
     <Panel
-      title={`SFX (${slots.length}/8)`}
+      title={`Sound Effects${slots.length > 0 ? ` (${slots.length})` : ''}`}
       headerRight={
-        canAdd ? (
+        <div className="flex gap-1">
           <button
-            onClick={handleAdd}
+            onClick={handleAddFile}
             className="text-xs px-2 py-1 bg-surface-overlay border border-border rounded hover:border-accent transition-colors"
           >
-            + Add
+            + File
           </button>
-        ) : null
+          <button
+            onClick={handleAddFolder}
+            className="text-xs px-2 py-1 bg-surface-overlay border border-border rounded hover:border-accent transition-colors"
+            title="Pick a folder of audio variants (randomly chosen each play)"
+          >
+            + Folder
+          </button>
+        </div>
       }
     >
       {slots.length === 0 ? (
@@ -167,7 +209,7 @@ export function SfxPanel({ sfx }: { sfx: SfxHook }) {
       ) : (
         <div>
           {slots.map((slot) => (
-            <SfxSlotRow key={slot.id} slot={slot} />
+            <SfxSlotRow key={slot.id} slot={slot} sfx={sfx} />
           ))}
         </div>
       )}

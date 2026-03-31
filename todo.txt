@@ -1,0 +1,70 @@
+Ambiance — Todo List
+====================
+
+COMPLETED
+---------
+[x] Video doesn't advance to next clip after first one ends
+[x] YouTube music doesn't play audio while video is playing
+[x] No way to reorder sources (move up/down) in video/music lists
+[x] Video crossfade plays same video instead of next one
+[x] "Video contains its own music" should be per-source, not per-layer
+[x] SFX default mode should be interval, not loop
+[x] SFX interval min should default to audio clip length
+[x] SFX interval max slider should go up to 1 hour (3600s)
+[x] Fullscreen leaves sidebar visible — should hide entire UI
+[x] Transport bar needs Next Video and Next Audio skip buttons
+[x] SFX slots from previous sessions don't play — now auto-restored from IndexedDB
+[x] YouTube playlist support for video (URL parsing + IFrame API loadPlaylist)
+[x] YouTube playlist support for music (URL parsing + IFrame API loadPlaylist)
+[x] Spotify playlist/album/track support for music (URI + Web Playback SDK)
+
+VIDEO LAYER
+-----------
+[ ] Support image files (jpg/png/webp) in local folders — display as slideshow
+    - Add configurable display duration per photo (seconds/minutes)
+    - Crossfade between photos same as between videos
+[ ] Support GIF files in local folders
+    - Add "loop count" setting — e.g. loop a fire GIF 20 times before advancing
+    - Calculate total display time from GIF duration × loop count
+
+MUSIC LAYER
+-----------
+(no open items — YouTube playlists, Spotify, and local folders all working)
+
+SFX LAYER
+---------
+[x] Folder-based SFX slots — pick a directory of variants (e.g. 4 thunder sounds), randomly choose one each play
+[x] Interval timer starts AFTER clip finishes, not from the start of the clip (min can be 0 = back-to-back)
+
+UI / SETTINGS
+-------------
+[x] Settings panel accessible via gear icon in transport bar
+    - Spotify Client ID input + save
+    - Spotify connect/disconnect with status indicator
+    - YouTube info (Premium = ad-free, no config needed)
+    - About section
+
+FUTURE / PHASE 7
+-----------------
+[ ] Tags UI — add/remove tags on sources and scenes
+[ ] Vibe Mode — dynamically assemble a scene from tagged media across the library
+
+
+GARRETT
+-----------------
+Adding 'playlists' (video/music/SFX)... 
+    Need a boolean to play whole list, or play one song from list. randomized?
+    This will apply for all 3 so lets think the logic through before blasting out code
+Want to hear more about the .amb file...
+    How does this work?
+    Is it safe for other users?
+    Specifics in regards to SFX being stored locally and type checking for sharing
+Videos:
+    Put a start/end time optionally
+    Play x times?
+    We have Contains Music boolean, not a Play Audio boolean. I might want some clarification there or to do both
+SFX:
+    Allow Overlap? Allow Order? Allow Button press to activate? (D&D or something)...
+
+Youtube / Spotify playlists...
+

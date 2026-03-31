@@ -8,6 +8,10 @@ interface SceneStore {
   scenes: Scene[]
   activeSceneId: string | null
   playing: boolean
+  /** Index into the active scene's video.sources array */
+  videoSourceIndex: number
+  /** Index into the active scene's music.sources array */
+  musicSourceIndex: number
 
   // ─── Computed-like ───────────────────────────────────────
   activeScene: () => Scene | undefined
@@ -28,17 +32,25 @@ interface SceneStore {
   // ─── Video Layer ─────────────────────────────────────────
   addVideoSource: (source: VideoSource) => void
   removeVideoSource: (index: number) => void
+  moveVideoSource: (index: number, direction: 'up' | 'down') => void
   setVideoVolume: (volume: number) => void
   toggleVideoMute: () => void
   toggleVideoShuffle: () => void
-  toggleVideoContainsMusic: () => void
+  toggleVideoSourceContainsMusic: (index: number) => void
+  nextVideoSource: () => void
+  prevVideoSource: () => void
+  setVideoSourceIndex: (index: number) => void
 
   // ─── Music Layer ─────────────────────────────────────────
   addMusicSource: (source: MusicSource) => void
   removeMusicSource: (index: number) => void
+  moveMusicSource: (index: number, direction: 'up' | 'down') => void
   setMusicVolume: (volume: number) => void
   toggleMusicMute: () => void
   toggleMusicShuffle: () => void
+  nextMusicSource: () => void
+  prevMusicSource: () => void
+  setMusicSourceIndex: (index: number) => void
 
   // ─── SFX Layer ───────────────────────────────────────────
   addSfxSlot: (slot: Omit<SfxSlot, 'id'>) => void
@@ -76,6 +88,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
     scenes: persisted,
     activeSceneId: activeId && persisted.some((s) => s.id === activeId) ? activeId : null,
     playing: false,
+    videoSourceIndex: 0,
+    musicSourceIndex: 0,
 
     activeScene: () => {
       const { scenes, activeSceneId } = get()
@@ -108,7 +122,7 @@ export const useSceneStore = create<SceneStore>((set, get) => {
     },
 
     setActiveScene: (id) => {
-      set({ activeSceneId: id, playing: false })
+      set({ activeSceneId: id, playing: false, videoSourceIndex: 0, musicSourceIndex: 0 })
       saveActiveSceneId(id)
     },
 
@@ -150,11 +164,31 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         video: { ...s.video, sources: [...s.video.sources, source] },
       })),
 
-    removeVideoSource: (index) =>
+    removeVideoSource: (index) => {
+      const scene = get().activeScene()
+      if (!scene) return
       updateActive(get, set, (s) => ({
         ...s,
         video: { ...s.video, sources: s.video.sources.filter((_, i) => i !== index) },
-      })),
+      }))
+      // Adjust current index if needed
+      const { videoSourceIndex } = get()
+      const newLen = scene.video.sources.length - 1
+      if (videoSourceIndex >= newLen && newLen > 0) {
+        set({ videoSourceIndex: newLen - 1 })
+      } else if (newLen === 0) {
+        set({ videoSourceIndex: 0 })
+      }
+    },
+
+    moveVideoSource: (index, direction) =>
+      updateActive(get, set, (s) => {
+        const sources = [...s.video.sources]
+        const targetIdx = direction === 'up' ? index - 1 : index + 1
+        if (targetIdx < 0 || targetIdx >= sources.length) return s
+        ;[sources[index], sources[targetIdx]] = [sources[targetIdx], sources[index]]
+        return { ...s, video: { ...s.video, sources } }
+      }),
 
     setVideoVolume: (volume) =>
       updateActive(get, set, (s) => ({ ...s, video: { ...s.video, volume } })),
@@ -171,11 +205,33 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         video: { ...s.video, shuffle: !s.video.shuffle },
       })),
 
-    toggleVideoContainsMusic: () =>
+    toggleVideoSourceContainsMusic: (index) =>
       updateActive(get, set, (s) => ({
         ...s,
-        video: { ...s.video, containsMusic: !s.video.containsMusic },
+        video: {
+          ...s.video,
+          sources: s.video.sources.map((src, i) =>
+            i === index ? { ...src, containsMusic: !src.containsMusic } : src,
+          ),
+        },
       })),
+
+    nextVideoSource: () => {
+      const scene = get().activeScene()
+      if (!scene || scene.video.sources.length === 0) return
+      const next = (get().videoSourceIndex + 1) % scene.video.sources.length
+      set({ videoSourceIndex: next })
+    },
+
+    prevVideoSource: () => {
+      const scene = get().activeScene()
+      if (!scene || scene.video.sources.length === 0) return
+      const len = scene.video.sources.length
+      const prev = (get().videoSourceIndex - 1 + len) % len
+      set({ videoSourceIndex: prev })
+    },
+
+    setVideoSourceIndex: (index) => set({ videoSourceIndex: index }),
 
     // ─── Music Layer ─────────────────────────────────────
 
@@ -185,11 +241,30 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         music: { ...s.music, sources: [...s.music.sources, source] },
       })),
 
-    removeMusicSource: (index) =>
+    removeMusicSource: (index) => {
+      const scene = get().activeScene()
+      if (!scene) return
       updateActive(get, set, (s) => ({
         ...s,
         music: { ...s.music, sources: s.music.sources.filter((_, i) => i !== index) },
-      })),
+      }))
+      const { musicSourceIndex } = get()
+      const newLen = scene.music.sources.length - 1
+      if (musicSourceIndex >= newLen && newLen > 0) {
+        set({ musicSourceIndex: newLen - 1 })
+      } else if (newLen === 0) {
+        set({ musicSourceIndex: 0 })
+      }
+    },
+
+    moveMusicSource: (index, direction) =>
+      updateActive(get, set, (s) => {
+        const sources = [...s.music.sources]
+        const targetIdx = direction === 'up' ? index - 1 : index + 1
+        if (targetIdx < 0 || targetIdx >= sources.length) return s
+        ;[sources[index], sources[targetIdx]] = [sources[targetIdx], sources[index]]
+        return { ...s, music: { ...s.music, sources } }
+      }),
 
     setMusicVolume: (volume) =>
       updateActive(get, set, (s) => ({ ...s, music: { ...s.music, volume } })),
@@ -205,6 +280,23 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         ...s,
         music: { ...s.music, shuffle: !s.music.shuffle },
       })),
+
+    nextMusicSource: () => {
+      const scene = get().activeScene()
+      if (!scene || scene.music.sources.length === 0) return
+      const next = (get().musicSourceIndex + 1) % scene.music.sources.length
+      set({ musicSourceIndex: next })
+    },
+
+    prevMusicSource: () => {
+      const scene = get().activeScene()
+      if (!scene || scene.music.sources.length === 0) return
+      const len = scene.music.sources.length
+      const prev = (get().musicSourceIndex - 1 + len) % len
+      set({ musicSourceIndex: prev })
+    },
+
+    setMusicSourceIndex: (index) => set({ musicSourceIndex: index }),
 
     // ─── SFX Layer ───────────────────────────────────────
 

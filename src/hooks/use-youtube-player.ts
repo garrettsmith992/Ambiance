@@ -11,6 +11,7 @@ interface UseYouTubePlayerOptions {
   containerId: string
   volume: number
   muted: boolean
+  onEnded?: () => void
 }
 
 interface UseYouTubePlayerReturn {
@@ -44,9 +45,11 @@ function ensureYouTubeAPI(): Promise<void> {
   })
 }
 
-export function useYouTubePlayer({ containerId, volume, muted }: UseYouTubePlayerOptions): UseYouTubePlayerReturn {
+export function useYouTubePlayer({ containerId, volume, muted, onEnded }: UseYouTubePlayerOptions): UseYouTubePlayerReturn {
   const playerRef = useRef<YT.Player | null>(null)
   const [isReady, setIsReady] = useState(false)
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
 
   useEffect(() => {
     let cancelled = false
@@ -73,6 +76,11 @@ export function useYouTubePlayer({ containerId, volume, muted }: UseYouTubePlaye
         events: {
           onReady: () => {
             if (!cancelled) setIsReady(true)
+          },
+          onStateChange: (event: YT.OnStateChangeEvent) => {
+            if (event.data === YT.PlayerState.ENDED) {
+              onEndedRef.current?.()
+            }
           },
         },
       })
